@@ -3,7 +3,8 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:gravity="center_horizontal"
-    android:orientation="vertical" >
+    android:orientation="vertical"
+    android:weightSum="1">
     
     <LinearLayout
         android:id="@+id/linearLayout2"
@@ -107,6 +108,17 @@
     <view class="com.google.speech.levelmeter.BarLevelDrawable"
         android:id="@+id/bar_level_drawable_view"
         android:layout_width="fill_parent"
-        android:layout_height="48dp" ></view> 
-    
+        android:layout_height="48dp" ></view>
+
+    <FrameLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_gravity="center_horizontal">
+
+        <com.google.speech.levelmeter.HzDbGraph
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/HzDbGraph" />
+    </FrameLayout>
+
 </LinearLayout>
