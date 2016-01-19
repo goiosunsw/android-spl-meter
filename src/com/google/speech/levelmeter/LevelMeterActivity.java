@@ -43,8 +43,13 @@ public class LevelMeterActivity extends Activity implements
   MicrophoneInput micInput;  // The micInput object provides real time audio.
   TextView mdBTextView;
   TextView mdBFractionTextView;
+  TextView mf0TextView;
   BarLevelDrawable mBarLevel;
   private TextView mGainTextView;
+
+  // pitch detection object
+  FastYin f0;
+
 
   double mOffsetdB = 10;  // Offset for bar, i.e. 0 lit LEDs at 10 dB.
   // The Google ASR input requirements state that audio input sensitivity
@@ -74,7 +79,10 @@ public class LevelMeterActivity extends Activity implements
     // PCM samples. The incoming frames will be handled by the
     // processAudioFrame method below.
     micInput = new MicrophoneInput(this);
-    
+
+
+
+
     // Read the layout and construct.
     setContentView(R.layout.main);
 
@@ -83,7 +91,7 @@ public class LevelMeterActivity extends Activity implements
     mBarLevel = (BarLevelDrawable)findViewById(R.id.bar_level_drawable_view);
     mdBTextView = (TextView)findViewById(R.id.dBTextView);
     mdBFractionTextView = (TextView)findViewById(R.id.dBFractionTextView);
-    mGainTextView = (TextView)findViewById(R.id.gain);
+    mf0TextView = (TextView)findViewById(R.id.F0textView);
 
     // Toggle Button handler.
 
@@ -98,6 +106,9 @@ public class LevelMeterActivity extends Activity implements
           readPreferences();
           micInput.setSampleRate(mSampleRate);
           micInput.setAudioSource(mAudioSource);
+          // f0 analysis
+          f0 = new FastYin(mSampleRate,micInput.mBufferSize);
+
           micInput.start();
         } else {
           micInput.stop();
@@ -108,25 +119,6 @@ public class LevelMeterActivity extends Activity implements
 
     // Level adjustment buttons.
     
-    // Minus 5 dB button event handler.
-    Button minus5dbButton = (Button)findViewById(R.id.minus_5_db_button);
-    DbClickListener minus5dBButtonListener = new DbClickListener(-5.0);
-    minus5dbButton.setOnClickListener(minus5dBButtonListener);
-
-    // Minus 1 dB button event handler.
-    Button minus1dbButton = (Button)findViewById(R.id.minus_1_db_button);
-    DbClickListener minus1dBButtonListener = new DbClickListener(-1.0);
-    minus1dbButton.setOnClickListener(minus1dBButtonListener);
-
-    // Plus 1 dB button event handler.
-    Button plus1dbButton = (Button)findViewById(R.id.plus_1_db_button);       
-    DbClickListener plus1dBButtonListener = new DbClickListener(1.0);
-    plus1dbButton.setOnClickListener(plus1dBButtonListener);
-
-    // Plus 5 dB button event handler.        
-    Button plus5dbButton = (Button)findViewById(R.id.plus_5_db_button);       
-    DbClickListener plus5dBButtonListener = new DbClickListener(5.0);
-    plus5dbButton.setOnClickListener(plus5dBButtonListener);
 
 
     // Settings button, launches the settings dialog.
@@ -191,10 +183,22 @@ public class LevelMeterActivity extends Activity implements
       mDrawing = true;
       // Compute the RMS value. (Note that this does not remove DC).
       double rms = 0;
+      float frameF[];
+      frameF = new float[audioFrame.length];
+
       for (int i = 0; i < audioFrame.length; i++) {
         rms += audioFrame[i]*audioFrame[i];
+        frameF[i] = (float) ((audioFrame[i]) / 32767.);
       }
-      rms = Math.sqrt(rms/audioFrame.length);
+      rms = Math.sqrt(rms / audioFrame.length);
+
+      // process f0
+      PitchDetectionResult pitch;
+
+      pitch = f0.getPitch(frameF);
+      final double freq = (double) pitch.getPitch();
+
+
 
       // Compute a smoothed version for less flickering of the display.
       mRmsSmoothed = mRmsSmoothed * mAlpha + (1 - mAlpha) * rms;
@@ -215,6 +219,10 @@ public class LevelMeterActivity extends Activity implements
           DecimalFormat df_fraction = new DecimalFormat("#");
           int one_decimal = (int) (Math.round(Math.abs(rmsdB * 10))) % 10;
           mdBFractionTextView.setText(Integer.toString(one_decimal));
+
+          DecimalFormat df0 = new DecimalFormat("####");
+          mf0TextView.setText(df0.format(freq));
+
           mDrawing = false;
         }
       });

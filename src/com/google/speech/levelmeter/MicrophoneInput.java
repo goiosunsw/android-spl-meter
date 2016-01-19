@@ -45,6 +45,7 @@ import android.util.Log;
 public class MicrophoneInput implements Runnable{
   int mSampleRate = 8000;
   int mAudioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION;
+  int mBufferSize = 1024; // default length
   final int mChannelConfig = AudioFormat.CHANNEL_IN_MONO;
   final int mAudioFormat = AudioFormat.ENCODING_PCM_16BIT;
 
@@ -59,7 +60,9 @@ public class MicrophoneInput implements Runnable{
   private static final String TAG = "MicrophoneInput"; 
 
   public MicrophoneInput(MicrophoneInputListener listener) {
+
     mListener = listener;
+    mBufferSize = mSampleRate / 50;
   }
   
   public void setSampleRate(int sampleRate) {
@@ -92,7 +95,7 @@ public class MicrophoneInput implements Runnable{
   @Override
   public void run() {
     // Buffer for 20 milliseconds of data, e.g. 160 samples at 8kHz.
-    short[] buffer20ms = new short[mSampleRate / 50];
+    short[] buffer20ms = new short[mBufferSize];
     // Buffer size of AudioRecord buffer, which will be at least 1 second.
     int buffer1000msSize = bufferSize(mSampleRate, mChannelConfig,
         mAudioFormat);
