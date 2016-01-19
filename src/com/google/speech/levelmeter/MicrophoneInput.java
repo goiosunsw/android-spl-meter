@@ -74,7 +74,7 @@ public class MicrophoneInput implements Runnable{
   }
 
   public void start() {
-    if (false == mRunning) {
+    if (!mRunning) {
       mRunning = true;
       mThread = new Thread(this);
       mThread.start();
@@ -115,10 +115,10 @@ public class MicrophoneInput implements Runnable{
         mListener.processAudioFrame(buffer20ms);
       }
       recorder.stop();
+      recorder.release();
     } catch(Throwable x) {
       Log.v(TAG, "Error reading audio", x);
-    } finally {
-    }   
+    }
   }
 
   public int totalSamples() {
