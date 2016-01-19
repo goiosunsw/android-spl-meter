@@ -17,9 +17,13 @@ package com.google.speech.levelmeter;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -45,10 +49,14 @@ public class LevelMeterActivity extends Activity implements
   TextView mdBFractionTextView;
   TextView mf0TextView;
   BarLevelDrawable mBarLevel;
-  private TextView mGainTextView;
+  HzDbGraph myGraph;
+  //SurfaceView surfaceView;
+  //SurfaceHolder surfaceHolder;
+
+  //private TextView mGainTextView;
 
   // pitch detection object
-  FastYin f0;
+  FastYin f0 = null;
 
 
   double mOffsetdB = 10;  // Offset for bar, i.e. 0 lit LEDs at 10 dB.
@@ -62,6 +70,7 @@ public class LevelMeterActivity extends Activity implements
   double mAlpha = 0.9;  // Coefficient of IIR smoothing filter for RMS.
   private int mSampleRate;  // The audio sampling rate to use.
   private int mAudioSource;  // The audio source to use.
+  private int radius =3;
   
   // Variables to monitor UI update and check for slow updates.
   private volatile boolean mDrawing;
@@ -79,7 +88,8 @@ public class LevelMeterActivity extends Activity implements
     // PCM samples. The incoming frames will be handled by the
     // processAudioFrame method below.
     micInput = new MicrophoneInput(this);
-
+    //surfaceView = (SurfaceView)findViewById(R.id.surfaceView);
+    //surfaceHolder = surfaceView.getHolder();
 
 
 
@@ -92,8 +102,13 @@ public class LevelMeterActivity extends Activity implements
     mdBTextView = (TextView)findViewById(R.id.dBTextView);
     mdBFractionTextView = (TextView)findViewById(R.id.dBFractionTextView);
     mf0TextView = (TextView)findViewById(R.id.F0textView);
+    //mHzDbGraph = (HzDbGraph)findViewById(R.id.surfaceView);
+    myGraph = (HzDbGraph)findViewById(R.id.HzDbGraph);
 
-    // Toggle Button handler.
+
+
+
+  // Toggle Button handler.
 
     final ToggleButton onOffButton=(ToggleButton)findViewById(
         R.id.on_off_toggle_button);
@@ -103,15 +118,20 @@ public class LevelMeterActivity extends Activity implements
       @Override
       public void onClick(View v) {
         if (onOffButton.isChecked()) {
+          myGraph.cleanSurface();
           readPreferences();
           micInput.setSampleRate(mSampleRate);
           micInput.setAudioSource(mAudioSource);
           // f0 analysis
-          f0 = new FastYin(mSampleRate,micInput.mBufferSize);
+          if (f0 == null)
+          {
+            f0 = new FastYin(mSampleRate,micInput.mBufferSize);
+          }
 
           micInput.start();
         } else {
           micInput.stop();
+
         }
       }
     };
@@ -142,24 +162,6 @@ public class LevelMeterActivity extends Activity implements
     settingsButton.setOnClickListener(settingsBtnListener);
   }
 
-  /** 
-   * Inner class to handle press of gain adjustment buttons.
-   */
-  private class DbClickListener implements Button.OnClickListener {
-    private double gainIncrement;
-
-    public DbClickListener(double gainIncrement) {
-      this.gainIncrement = gainIncrement;
-    }
-
-    @Override
-    public void onClick(View v) {
-      LevelMeterActivity.this.mGain *= Math.pow(10, gainIncrement / 20.0);
-      mDifferenceFromNominal -= gainIncrement;
-      DecimalFormat df = new DecimalFormat("##.# dB");
-      mGainTextView.setText(df.format(mDifferenceFromNominal));
-    }
-  }
 
   /**
    * Method to read the sample rate and audio source preferences.
@@ -195,9 +197,16 @@ public class LevelMeterActivity extends Activity implements
       // process f0
       PitchDetectionResult pitch;
 
-      pitch = f0.getPitch(frameF);
-      final double freq = (double) pitch.getPitch();
-
+      double freqtemp;
+      if (f0 != null) {
+        pitch = f0.getPitch(frameF);
+        freqtemp = (double) pitch.getPitch();
+      }
+      else
+      {
+        freqtemp = -1;
+      }
+      final double freq = freqtemp;
 
 
       // Compute a smoothed version for less flickering of the display.
@@ -223,6 +232,8 @@ public class LevelMeterActivity extends Activity implements
           DecimalFormat df0 = new DecimalFormat("####");
           mf0TextView.setText(df0.format(freq));
 
+
+          myGraph.drawDbFreq((float) rmsdB, (float) freq);
           mDrawing = false;
         }
       });
